@@ -4,6 +4,7 @@ const userSchema = new mongoose.Schema({
   username: { type: String, unique: true },
   password: String,
   IDImage: String,
+  device_token: String
 });
 
 module.exports = mongoose.model('User', userSchema);
