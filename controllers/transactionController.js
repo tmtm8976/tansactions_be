@@ -1,15 +1,35 @@
 const Transaction = require("../models/Transaction");
-const admin = require('../firebaseAdmin');
+const admin = require("../firebaseAdmin");
 const User = require("../models/User");
 
 exports.createTransaction = async (req, res) => {
   try {
-    const { amount, recipient } = req.body;
+    const { id, recipient, amount } = req.body;
+    const userId = req.user.id;
+
+    if (!id || !recipient || !amount ) {
+      res
+        .status(400)
+        .json({ status: "error", msg: "Missing fields" });
+    }
+
+    const existing = await Transaction.findOne({_id: id});
+
+    if (existing) {
+      // Already processed
+      res
+        .status(400)
+        .json({ status: "error", msg: "Transaction already processed" });
+    }
 
     const transaction = new Transaction({
-      userId: req.user.id,
+      _id: id,
+      userId,
       amount,
       recipient,
+      createdAt: req.body?.createdAt ?? new Date().toISOString(),
+      completed: true,
+      completed_at: new Date().toISOString(),
     });
     await transaction.save();
 
