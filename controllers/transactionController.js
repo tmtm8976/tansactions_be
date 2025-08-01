@@ -5,26 +5,26 @@ const User = require("../models/User");
 exports.createTransaction = async (req, res) => {
   try {
     const { id, recipient, amount } = req.body;
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
-    if (!id || !recipient || !amount ) {
-      res
-        .status(400)
-        .json({ status: "error", msg: "Missing fields" });
+    if (!id || !recipient || !amount || !userId) {
+      res.status(400).json({ status: "error", msg: "Missing fields" });
+      return;
     }
 
-    const existing = await Transaction.findOne({_id: id});
+    const existing = await Transaction.findOne({ _id: id });
 
     if (existing) {
       // Already processed
       res
         .status(400)
         .json({ status: "error", msg: "Transaction already processed" });
+      return;
     }
 
     const transaction = new Transaction({
       _id: id,
-      userId,
+      userId: userId,
       amount,
       recipient,
       createdAt: req.body?.createdAt ?? new Date().toISOString(),
@@ -34,7 +34,7 @@ exports.createTransaction = async (req, res) => {
     await transaction.save();
 
     // Get user to retrieve device token
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(userId);
     if (user?.device_token) {
       await admin.messaging().send({
         token: user.device_token,
@@ -44,6 +44,10 @@ exports.createTransaction = async (req, res) => {
         },
         android: {
           priority: "high",
+          notification: {
+            body: `Your transaction of $${amount} to ${recipient} was successful.`,
+            title: "Transaction Completed",
+          },
         },
       });
     }
@@ -59,7 +63,7 @@ exports.createTransaction = async (req, res) => {
 };
 
 exports.getTransactions = async (req, res) => {
-  const transactions = await Transaction.find({ userId: req.user.id }).sort({
+  const transactions = await Transaction.find({ userId: req.user.userId }).sort({
     createdAt: -1,
   });
   res.json({
